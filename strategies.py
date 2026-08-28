@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import yfinance as yf
 
 # 1. RSI Indicator
 def calc_rsi(series, period=14):
@@ -9,14 +10,17 @@ def calc_rsi(series, period=14):
     rs = gain / loss
     return 100 - (100 / (1 + rs))
 
-# 2. Supertrend Indicator
+# 2. Supertrend Indicator (10, 4 Default)
 def calc_supertrend(df, period=10, multiplier=4):
     high, low, close = df['High'].squeeze(), df['Low'].squeeze(), df['Close'].squeeze()
-    tr1, tr2, tr3 = high - low, abs(high - close.shift(1)), abs(low - close.shift(1))
+    tr1 = high - low
+    tr2 = abs(high - close.shift(1))
+    tr3 = abs(low - close.shift(1))
     atr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1).rolling(period).mean()
     hl2 = (high + low) / 2
     upperband = hl2 + (multiplier * atr)
     lowerband = hl2 - (multiplier * atr)
+    
     in_uptrend = np.ones(len(df), dtype=bool)
     for i in range(1, len(df)):
         if close.iloc[i] > upperband.iloc[i-1]:
@@ -29,9 +33,11 @@ def calc_supertrend(df, period=10, multiplier=4):
                 lowerband.iloc[i] = lowerband.iloc[i-1]
             if not in_uptrend[i] and upperband.iloc[i] > upperband.iloc[i-1]:
                 upperband.iloc[i] = upperband.iloc[i-1]
-    return pd.Series(in_uptrend, index=df.index), lowerband
+    
+    st_val = pd.Series(np.where(in_uptrend, lowerband, upperband), index=df.index)
+    return pd.Series(in_uptrend, index=df.index), st_val
 
-# 3. Conviction Scoring Formula
+# 3. Conviction Scoring
 def get_conviction_score(stock_3m, n_3m, vol_ratio, rsi_val, risk_metric):
     rs = stock_3m - n_3m
     pts_rs = 30 if rs >= 20 else (24 if rs >= 10 else (18 if rs >= 0 else 8))
@@ -39,3 +45,41 @@ def get_conviction_score(stock_3m, n_3m, vol_ratio, rsi_val, risk_metric):
     pts_rr = 25 if risk_metric <= 10 else (20 if risk_metric <= 15 else (15 if risk_metric <= 20 else 10))
     pts_mom = 20 if 60 <= rsi_val <= 72 else (16 if 50 <= rsi_val < 60 else (12 if rsi_val > 72 else 6))
     return min(100, int(pts_rs + pts_vol + pts_rr + pts_mom))
+
+# 4. Nifty & Sensex MTF Intraday Tracker (3m + 10m)
+def get_index_mtf_signal(ticker_symbol):
+    try:
+        # Download 3m and 5m/15m data to resample 10m cleanly
+        df_3m = yf.download(ticker_symbol, period='5d', interval='2m', progress=False, auto_adjust=True).dropna()
+        # Resample to 3m & 10m
+        resamp_3m = df_3m.resample('3min').agg({'Open':'first', 'High':'max', 'Low':'min', 'Close':'last', 'Volume':'sum'}).dropna()
+        resamp_10m = df_3m.resample('10min').agg({'Open':'first', 'High':'max', 'Low':'min', 'Close':'last', 'Volume':'sum'}).dropna()
+
+        trend_3m, st_val_3m = calc_supertrend(resamp_3m, period=10, multiplier=4)
+        trend_10m, st_val_10m = calc_supertrend(resamp_10m, period=10, multiplier=4)
+
+        t3 = bool(trend_3m.iloc[-1])
+        t10 = bool(trend_10m.iloc[-1])
+        cmp_p = float(resamp_3m['Close'].iloc[-1])
+        sl_3m = float(st_val_3m.iloc[-1])
+
+        if t10 and t3:
+            signal = "STRONG LONG 🟢"
+            status = "Uptrend on 10M & 3M"
+        elif (not t10) and (not t3):
+            signal = "STRONG SHORT 🔴"
+            status = "Downtrend on 10M & 3M"
+        else:
+            signal = "NEUTRAL / CHOPPY ⚪"
+            status = "10M vs 3M Misaligned"
+
+        return {
+            "CMP": round(cmp_p, 2),
+            "Signal": signal,
+            "10M Trend": "BULLISH 🟢" if t10 else "BEARISH 🔴",
+            "3M Trend": "BULLISH 🟢" if t3 else "BEARISH 🔴",
+            "Dynamic StopLoss (3M ST)": round(sl_3m, 2),
+            "Risk Points": round(abs(cmp_p - sl_3m), 2)
+        }
+    except Exception:
+        return None
