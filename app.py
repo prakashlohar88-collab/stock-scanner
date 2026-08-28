@@ -66,7 +66,7 @@ with col_nifty:
         st.write(f"• **10M Trend:** {nifty_sig['10M Trend']} | **3M Trend:** {nifty_sig['3M Trend']}")
         st.info(f"🎯 **Trailing Stop-Loss (3M ST):** ₹{nifty_sig['Dynamic StopLoss (3M ST)']} (Risk: {nifty_sig['Risk Points']} pts)")
     else:
-        st.info("मार्केट डेटा लोड हो रहा है...")
+        st.info("डेटा लोड हो रहा है...")
 
 with col_sensex:
     st.markdown("### 📊 SENSEX (3M / 10M)")
@@ -76,7 +76,7 @@ with col_sensex:
         st.write(f"• **10M Trend:** {sensex_sig['10M Trend']} | **3M Trend:** {sensex_sig['3M Trend']}")
         st.info(f"🎯 **Trailing Stop-Loss (3M ST):** ₹{sensex_sig['Dynamic StopLoss (3M ST)']} (Risk: {sensex_sig['Risk Points']} pts)")
     else:
-        st.info("मार्केट डेटा लोड हो रहा है...")
+        st.info("डेटा लोड हो रहा है...")
 
 st.divider()
 
@@ -90,7 +90,11 @@ nifty_3m_ret = ((nifty_cmp - float(nifty_close.iloc[-60])) / float(nifty_close.i
 col1, col2, col3 = st.columns(3)
 col1.metric("NIFTY 50 CMP", f"₹{nifty_cmp:,.2f}")
 col2.metric("NIFTY 200 EMA", f"₹{nifty_ema200:,.2f}")
-col3.success("🟢 Market Regime: BULLISH (100% Capital Mode)") if nifty_cmp > nifty_ema200 else col3.warning("🟡 Market Regime: CAUTION (50% Risk Mode)")
+
+if nifty_cmp > nifty_ema200:
+    col3.success("🟢 Market Regime: BULLISH (100% Capital Mode)")
+else:
+    col3.warning("🟡 Market Regime: CAUTION (50% Risk Mode)")
 
 st.divider()
 
@@ -276,3 +280,4 @@ with main_tab2:
             with c6:
                 st.markdown("#### ❄️ Top 10 Low RSI")
                 st.dataframe(df_m.sort_values(by="RSI (14)", ascending=True).head(10)[["Stock", "CMP (₹)", "RSI (14)", "Change %"]].reset_index(drop=True), use_container_width=True)
+        
