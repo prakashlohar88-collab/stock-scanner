@@ -17,23 +17,33 @@ if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.user_data = None
 
+import json
+import tempfile
+
 # 2. गूगल ऑथेंटिकेशन साइडबार
 def auth_sidebar():
     st.sidebar.title("🔐 User Portal")
     
+    # Secrets से सीधे JSON फ़ाइल तैयार करना
+    oauth_dict = {
+        "web": {
+            "client_id": st.secrets["google_oauth"]["client_id"],
+            "client_secret": st.secrets["google_oauth"]["client_secret"],
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "redirect_uris": [st.secrets["google_oauth"]["redirect_uri"]],
+        }
+    }
+    
+    with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.json') as f:
+        json.dump(oauth_dict, f)
+        temp_cred_path = f.name
+
     google_auth = auth.Authenticate(
-        secret_credentials_path={
-            "web": {
-                "client_id": st.secrets["google_oauth"]["client_id"],
-                "client_secret": st.secrets["google_oauth"]["client_secret"],
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-                "redirect_uris": [st.secrets["google_oauth"]["redirect_uri"]],
-            }
-        },
+        secret_credentials_path=temp_cred_path,
         cookie_name="scanner_auth_cookie",
         cookie_key="scanner_secure_secret_key_9876",
-        cookie_expiry_days=30,
+        redirect_uri=st.secrets["google_oauth"]["redirect_uri"],
     )
 
     google_auth.check_authentification()
@@ -58,6 +68,11 @@ def auth_sidebar():
             st.session_state.user_data = None
             st.rerun()
     else:
+        st.sidebar.warning("⚠️ कृपया ऐप का उपयोग करने के लिए ऊपर Google बटन से लॉगिन करें।")
+        st.stop()
+
+auth_sidebar()
+
         st.sidebar.warning("⚠️ कृपया ऐप का उपयोग करने के लिए Google से लॉगिन करें।")
         st.stop()
 
