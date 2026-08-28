@@ -10,7 +10,7 @@ def calc_rsi(series, period=14):
     rs = gain / loss
     return 100 - (100 / (1 + rs))
 
-# 2. Supertrend Indicator (10, 4 Default)
+# 2. Supertrend Indicator (10, 4)
 def calc_supertrend(df, period=10, multiplier=4):
     high, low, close = df['High'].squeeze(), df['Low'].squeeze(), df['Close'].squeeze()
     tr1 = high - low
@@ -37,7 +37,7 @@ def calc_supertrend(df, period=10, multiplier=4):
     st_val = pd.Series(np.where(in_uptrend, lowerband, upperband), index=df.index)
     return pd.Series(in_uptrend, index=df.index), st_val
 
-# 3. Conviction Scoring
+# 3. Conviction Scoring Engine
 def get_conviction_score(stock_3m, n_3m, vol_ratio, rsi_val, risk_metric):
     rs = stock_3m - n_3m
     pts_rs = 30 if rs >= 20 else (24 if rs >= 10 else (18 if rs >= 0 else 8))
@@ -49,11 +49,11 @@ def get_conviction_score(stock_3m, n_3m, vol_ratio, rsi_val, risk_metric):
 # 4. Nifty & Sensex MTF Intraday Tracker (3m + 10m)
 def get_index_mtf_signal(ticker_symbol):
     try:
-        # Download 3m and 5m/15m data to resample 10m cleanly
-        df_3m = yf.download(ticker_symbol, period='5d', interval='2m', progress=False, auto_adjust=True).dropna()
-        # Resample to 3m & 10m
-        resamp_3m = df_3m.resample('3min').agg({'Open':'first', 'High':'max', 'Low':'min', 'Close':'last', 'Volume':'sum'}).dropna()
-        resamp_10m = df_3m.resample('10min').agg({'Open':'first', 'High':'max', 'Low':'min', 'Close':'last', 'Volume':'sum'}).dropna()
+        df_raw = yf.download(ticker_symbol, period='5d', interval='1m', progress=False, auto_adjust=True).dropna()
+        if len(df_raw) < 30:
+            return None
+        resamp_3m = df_raw.resample('3min').agg({'Open':'first', 'High':'max', 'Low':'min', 'Close':'last', 'Volume':'sum'}).dropna()
+        resamp_10m = df_raw.resample('10min').agg({'Open':'first', 'High':'max', 'Low':'min', 'Close':'last', 'Volume':'sum'}).dropna()
 
         trend_3m, st_val_3m = calc_supertrend(resamp_3m, period=10, multiplier=4)
         trend_10m, st_val_10m = calc_supertrend(resamp_10m, period=10, multiplier=4)
@@ -65,13 +65,10 @@ def get_index_mtf_signal(ticker_symbol):
 
         if t10 and t3:
             signal = "STRONG LONG 🟢"
-            status = "Uptrend on 10M & 3M"
         elif (not t10) and (not t3):
             signal = "STRONG SHORT 🔴"
-            status = "Downtrend on 10M & 3M"
         else:
             signal = "NEUTRAL / CHOPPY ⚪"
-            status = "10M vs 3M Misaligned"
 
         return {
             "CMP": round(cmp_p, 2),
@@ -83,3 +80,4 @@ def get_index_mtf_signal(ticker_symbol):
         }
     except Exception:
         return None
+        
