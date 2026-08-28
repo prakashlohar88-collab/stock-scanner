@@ -9,13 +9,26 @@ import strategies as stg
 
 warnings.filterwarnings('ignore')
 
-st.set_page_config(page_title="Alpha Momentum Web Scanner", page_icon="📈", layout="wide")
+st.set_page_config(
+    page_title="Alpha Momentum - Technical Analytics", 
+    page_icon="📈", 
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Custom Styling for Clean Mobile View
+st.markdown("""
+    <style>
+    .footer-text { font-size: 12px; color: #888; text-align: center; margin-top: 50px; }
+    .disclaimer-box { background-color: #2b2b2b; padding: 12px; border-radius: 8px; border-left: 5px solid #ff9800; font-size: 13px; margin-bottom: 20px; }
+    </style>
+""", unsafe_allow_html=True)
 
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.user_data = None
 
-# User Portal
+# --- SIDEBAR: USER PORTAL ---
 st.sidebar.title("🔐 User Portal")
 if not st.session_state.logged_in:
     choice = st.sidebar.radio("विकल्प चुनें:", ["लॉगिन (Login)", "नया अकाउंट (Sign Up)"])
@@ -45,17 +58,25 @@ if not st.session_state.logged_in:
 else:
     u = st.session_state.user_data
     st.sidebar.success(f"👤 स्वागत है, **{u['username']}**!")
-    st.sidebar.info(f"🏆 **प्लान:** {u['status']}\n\n⏳ **समाप्ति:** {str(u['expiry'])[:10]}")
-    if st.sidebar.button("लॉगआउट"):
+    st.sidebar.info(f"🏆 **प्लान:** {u['status']}\n\n⏳ **वैधता (Expiry):** {str(u['expiry'])[:10]}")
+    if st.sidebar.button("लॉगआउट (Logout)"):
         st.session_state.logged_in = False
         st.session_state.user_data = None
         st.rerun()
 
-# ----------------- MAIN APP -----------------
-st.title("🚀 Alpha Momentum Trading Terminal")
+# --- MANDATORY REGULATORY DISCLAIMER HEADER ---
+st.markdown("""
+<div class="disclaimer-box">
+⚠️ <b>महत्वपूर्ण अस्वीकरण (Regulatory Disclaimer):</b> यह प्लेटफ़ॉर्म केवल <b>शैक्षणिक और तकनीकी अध्ययन (Educational & Technical Analysis)</b> के लिए एक स्वचालित डेटा स्कैनर है। हम SEBI-पंजीकृत रिसर्च एनालिस्ट या एडवाइजर नहीं हैं। यहाँ प्रदर्शित कोई भी डेटा, स्कोर या स्तर शेयर खरीदने या बेचने की सलाह (Buy/Sell Recommendation) नहीं है। कोई भी वित्तीय निर्णय लेने से पहले अपने वित्तीय सलाहकार से परामर्श लें।
+</div>
+""", unsafe_allow_html=True)
 
-# Top Section: Index MTF Supertrend
-st.subheader("⚡ NIFTY & SENSEX MTF Intraday Supertrend (10, 4)")
+# ----------------- MAIN TERMINAL -----------------
+st.title("📊 Alpha Momentum Technical Analytics")
+st.caption("Automated Technical Rule-Based Screener & Relative Strength Engine")
+
+# Index MTF Section
+st.subheader("⚡ NIFTY & SENSEX MTF Technical Trend (10, 4)")
 col_nifty, col_sensex = st.columns(2)
 
 with col_nifty:
@@ -64,9 +85,9 @@ with col_nifty:
     if nifty_sig:
         st.metric("NIFTY 50 CMP", f"₹{nifty_sig['CMP']:,}", delta=nifty_sig['Signal'])
         st.write(f"• **10M Trend:** {nifty_sig['10M Trend']} | **3M Trend:** {nifty_sig['3M Trend']}")
-        st.info(f"🎯 **Trailing Stop-Loss (3M ST):** ₹{nifty_sig['Dynamic StopLoss (3M ST)']} (Risk: {nifty_sig['Risk Points']} pts)")
+        st.info(f"🎯 **Technical Pivot/Support (3M ST):** ₹{nifty_sig['Dynamic StopLoss (3M ST)']} (Diff: {nifty_sig['Risk Points']} pts)")
     else:
-        st.info("डेटा लोड हो रहा है...")
+        st.info("मार्केट डेटा लोड हो रहा है...")
 
 with col_sensex:
     st.markdown("### 📊 SENSEX (3M / 10M)")
@@ -74,13 +95,13 @@ with col_sensex:
     if sensex_sig:
         st.metric("SENSEX CMP", f"₹{sensex_sig['CMP']:,}", delta=sensex_sig['Signal'])
         st.write(f"• **10M Trend:** {sensex_sig['10M Trend']} | **3M Trend:** {sensex_sig['3M Trend']}")
-        st.info(f"🎯 **Trailing Stop-Loss (3M ST):** ₹{sensex_sig['Dynamic StopLoss (3M ST)']} (Risk: {sensex_sig['Risk Points']} pts)")
+        st.info(f"🎯 **Technical Pivot/Support (3M ST):** ₹{sensex_sig['Dynamic StopLoss (3M ST)']} (Diff: {sensex_sig['Risk Points']} pts)")
     else:
-        st.info("डेटा लोड हो रहा है...")
+        st.info("मार्केट डेटा लोड हो रहा है...")
 
 st.divider()
 
-# Market Regime Banner
+# Market Regime
 nifty_df = yf.download('^NSEI', period='1y', interval='1d', progress=False, auto_adjust=True).dropna()
 nifty_close = nifty_df['Close'].squeeze()
 nifty_ema200 = float(nifty_close.ewm(span=200, adjust=False).mean().iloc[-1])
@@ -92,9 +113,9 @@ col1.metric("NIFTY 50 CMP", f"₹{nifty_cmp:,.2f}")
 col2.metric("NIFTY 200 EMA", f"₹{nifty_ema200:,.2f}")
 
 if nifty_cmp > nifty_ema200:
-    col3.success("🟢 Market Regime: BULLISH (100% Capital Mode)")
+    col3.success("🟢 Market Regime: ABOVE 200 EMA (Broad Uptrend)")
 else:
-    col3.warning("🟡 Market Regime: CAUTION (50% Risk Mode)")
+    col3.warning("🟡 Market Regime: BELOW 200 EMA (Cautionary Phase)")
 
 st.divider()
 
@@ -107,18 +128,18 @@ def load_symbols():
         df = pd.read_csv(io.StringIO(res.text))
         return [f"{s.strip()}.NS" for s in df['Symbol'].tolist()]
     except Exception:
-        return ['RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'INFY.NS', 'TRENT.NS', 'BEL.NS', 'HAL.NS', 'DIXON.NS', 'TATAMOTORS.NS', 'SBIN.NS', '360ONE.NS', 'AJANTPHARM.NS', 'BEML.NS', 'ASAHIINDIA.NS', 'ARE&M.NS', 'ACMESOLAR.NS', 'ADANIENT.NS', 'ABSLAMC.NS', 'ANURAS.NS', 'ASTRAL.NS']
+        return ['RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'INFY.NS', 'TRENT.NS', 'BEL.NS', 'HAL.NS', 'DIXON.NS', 'TATAMOTORS.NS', 'SBIN.NS']
 
-main_tab1, main_tab2 = st.tabs(["🎯 A+ Momentum Swing Scanners", "🔥 Top 10 Market Heatmap (NIFTY 500)"])
+main_tab1, main_tab2, main_tab3 = st.tabs(["🎯 Rule-Based Technical Scanners", "🔥 Market Heatmap & Volume", "📜 Legal & Policies"])
 
-# TAB 1: 3 CORE SWING SCANNERS
+# TAB 1: SCANNERS
 with main_tab1:
-    st.subheader("⚡ Live Market Scanner")
-    tab1, tab2, tab3 = st.tabs(["📦 Darvas Box Breakout", "🚀 MTF Supertrend Multiplier", "🔥 High-Tight Flag Contraction"])
+    st.caption("Scans stocks based on predefined price action and mathematical filters.")
+    tab1, tab2, tab3 = st.tabs(["📦 25-Day Consolidation Range", "🚀 Multi-Timeframe Supertrend", "🔥 Price Expansion Filter"])
     
     symbols = load_symbols()[:60]
     
-    if st.button("🔄 Run Scanner (Analyze Top Momentum Set)"):
+    if st.button("🔄 Run Rule Engine"):
         darvas_results, supertrend_results, flag_results = [], [], []
         progress_bar = st.progress(0)
         
@@ -126,55 +147,49 @@ with main_tab1:
             progress_bar.progress((idx + 1) / len(symbols))
             try:
                 df = yf.download(sym, period='1y', interval='1d', progress=False, auto_adjust=True).dropna()
-                if len(df) < 100:
-                    continue
+                if len(df) < 100: continue
 
-                c = df['Close'].squeeze()
-                h = df['High'].squeeze()
-                l = df['Low'].squeeze()
-                v = df['Volume'].squeeze()
-
+                c, h, l, v = df['Close'].squeeze(), df['High'].squeeze(), df['Low'].squeeze(), df['Volume'].squeeze()
                 cmp_price = float(c.iloc[-1])
                 rsi = float(stg.calc_rsi(c).iloc[-1])
                 vol_ratio = float(v.iloc[-1] / v.rolling(20).mean().iloc[-1])
                 stock_3m_ret = ((cmp_price - float(c.iloc[-60])) / float(c.iloc[-60])) * 100
                 
-                # 1. Darvas Box Strategy
+                # Darvas
                 box_high = float(h.iloc[-25:-1].max())
                 box_low = float(l.iloc[-25:-1].min())
                 if cmp_price > box_high and float(c.iloc[-2]) <= box_high and vol_ratio >= 1.5:
-                    risk_pct = round(((cmp_price - box_low) / cmp_price) * 100, 2)
-                    score = stg.get_conviction_score(stock_3m_ret, nifty_3m_ret, vol_ratio, rsi, risk_pct)
+                    sl_dist = round(((cmp_price - box_low) / cmp_price) * 100, 2)
+                    score = stg.get_conviction_score(stock_3m_ret, nifty_3m_ret, vol_ratio, rsi, sl_dist)
                     darvas_results.append({
                         "Stock": sym.replace(".NS", ""),
-                        "Rank Score": score,
-                        "CMP": round(cmp_price, 2),
-                        "Box Breakout Level": round(box_high, 2),
-                        "Stop Loss (Box Low)": round(box_low, 2),
-                        "Risk %": risk_pct,
+                        "Strength Score": score,
+                        "CMP (₹)": round(cmp_price, 2),
+                        "Resistance Level": round(box_high, 2),
+                        "Support Base": round(box_low, 2),
+                        "SL Distance %": f"{sl_dist}%",
                         "RSI (14)": round(rsi, 1),
-                        "Vol Surge": f"{round(vol_ratio, 2)}x"
+                        "Vol Ratio": f"{round(vol_ratio, 2)}x"
                     })
 
-                # 2. MTF Supertrend Multiplier Strategy
+                # Supertrend
                 st_trend, st_band = stg.calc_supertrend(df, period=10, multiplier=4)
                 ema50 = float(c.ewm(span=50, adjust=False).mean().iloc[-1])
                 if bool(st_trend.iloc[-1]) and cmp_price > ema50 and rsi >= 55:
                     sl_level = float(st_band.iloc[-1])
-                    risk_pct = round(((cmp_price - sl_level) / cmp_price) * 100, 2)
-                    score = stg.get_conviction_score(stock_3m_ret, nifty_3m_ret, vol_ratio, rsi, risk_pct)
+                    sl_dist = round(((cmp_price - sl_level) / cmp_price) * 100, 2)
+                    score = stg.get_conviction_score(stock_3m_ret, nifty_3m_ret, vol_ratio, rsi, sl_dist)
                     supertrend_results.append({
                         "Stock": sym.replace(".NS", ""),
-                        "Rank Score": score,
-                        "CMP": round(cmp_price, 2),
-                        "Supertrend Support": round(sl_level, 2),
+                        "Strength Score": score,
+                        "CMP (₹)": round(cmp_price, 2),
+                        "ST Support": round(sl_level, 2),
                         "50 EMA": round(ema50, 2),
-                        "Risk %": risk_pct,
-                        "RSI (14)": round(rsi, 1),
-                        "Conviction": "High" if score >= 80 else "Moderate"
+                        "SL Distance %": f"{sl_dist}%",
+                        "RSI (14)": round(rsi, 1)
                     })
 
-                # 3. High Tight Flag Contraction Strategy
+                # Expansion Filter
                 six_m_low = float(l.iloc[-120:].min())
                 rally_pct = ((cmp_price - six_m_low) / six_m_low) * 100
                 if rally_pct >= 80:
@@ -183,44 +198,27 @@ with main_tab1:
                         score = stg.get_conviction_score(stock_3m_ret, nifty_3m_ret, vol_ratio, rsi, recent_range_pct)
                         flag_results.append({
                             "Stock": sym.replace(".NS", ""),
-                            "Rank Score": score,
-                            "CMP": round(cmp_price, 2),
-                            "6M Rally %": f"+{round(rally_pct, 1)}%",
-                            "Consolidation Range": f"{round(recent_range_pct, 1)}%",
+                            "Strength Score": score,
+                            "CMP (₹)": round(cmp_price, 2),
+                            "6M Trend %": f"+{round(rally_pct, 1)}%",
+                            "Base Range %": f"{round(recent_range_pct, 1)}%",
                             "RSI (14)": round(rsi, 1),
-                            "Vol Surge": f"{round(vol_ratio, 2)}x"
+                            "Vol Ratio": f"{round(vol_ratio, 2)}x"
                         })
             except Exception:
                 continue
 
         with tab1:
-            if darvas_results:
-                df_res = pd.DataFrame(darvas_results).sort_values(by="Rank Score", ascending=False).reset_index(drop=True)
-                df_res.index = df_res.index + 1
-                st.dataframe(df_res, use_container_width=True)
-            else:
-                st.info("Darvas Box Breakout रणनीति में फ़िलहाल कोई नया ब्रेकआउट नहीं मिला।")
-
+            st.dataframe(pd.DataFrame(darvas_results).sort_values(by="Strength Score", ascending=False).reset_index(drop=True), use_container_width=True) if darvas_results else st.info("कोई स्टॉक फ़िल्टर नहीं हुआ।")
         with tab2:
-            if supertrend_results:
-                df_res = pd.DataFrame(supertrend_results).sort_values(by="Rank Score", ascending=False).reset_index(drop=True)
-                df_res.index = df_res.index + 1
-                st.dataframe(df_res, use_container_width=True)
-            else:
-                st.info("MTF Supertrend में कोई एक्टिव सिग्नल नहीं मिला।")
-
+            st.dataframe(pd.DataFrame(supertrend_results).sort_values(by="Strength Score", ascending=False).reset_index(drop=True), use_container_width=True) if supertrend_results else st.info("कोई स्टॉक फ़िल्टर नहीं हुआ।")
         with tab3:
-            if flag_results:
-                df_res = pd.DataFrame(flag_results).sort_values(by="Rank Score", ascending=False).reset_index(drop=True)
-                df_res.index = df_res.index + 1
-                st.dataframe(df_res, use_container_width=True)
-            else:
-                st.info("High-Tight Flag Contraction में कोई स्टॉक नहीं मिला।")
+            st.dataframe(pd.DataFrame(flag_results).sort_values(by="Strength Score", ascending=False).reset_index(drop=True), use_container_width=True) if flag_results else st.info("कोई स्टॉक फ़िल्टर नहीं हुआ।")
 
-# TAB 2: TOP 10 MARKET HEATMAP
+# TAB 2: MARKET HEATMAP
 with main_tab2:
-    st.caption("Top Gainers, Losers, High Volume, High Turnover Value, RSI Extreme Setups")
-    if st.button("📊 Scan NIFTY 500 Market Pulse"):
+    st.caption("Standard Market Statistics & Price Distribution")
+    if st.button("📊 Scan Market Pulse"):
         stock_list = load_symbols()[:80]
         market_data = []
         p_bar = st.progress(0)
@@ -230,7 +228,6 @@ with main_tab2:
             try:
                 d = yf.download(sym, period='3mo', interval='1d', progress=False, auto_adjust=True).dropna()
                 if len(d) < 20: continue
-                
                 cl = d['Close'].squeeze()
                 vl = d['Volume'].squeeze()
                 
@@ -251,33 +248,53 @@ with main_tab2:
                     "Turnover (₹ Cr)": turnover_cr,
                     "RSI (14)": rsi_val
                 })
-            except Exception:
-                continue
+            except Exception: continue
                 
         if market_data:
             df_m = pd.DataFrame(market_data)
-            
             c1, c2 = st.columns(2)
             with c1:
-                st.markdown("#### 🟢 Top 10 Gainers")
+                st.markdown("#### 🟢 Top Gainers (%)")
                 st.dataframe(df_m.sort_values(by="Change %", ascending=False).head(10)[["Stock", "CMP (₹)", "Change %", "Volume Ratio"]].reset_index(drop=True), use_container_width=True)
             with c2:
-                st.markdown("#### 🔴 Top 10 Losers")
+                st.markdown("#### 🔴 Top Decliners (%)")
                 st.dataframe(df_m.sort_values(by="Change %", ascending=True).head(10)[["Stock", "CMP (₹)", "Change %", "Volume Ratio"]].reset_index(drop=True), use_container_width=True)
                 
             c3, c4 = st.columns(2)
             with c3:
-                st.markdown("#### 🚀 Top 10 Volume Surges")
+                st.markdown("#### 🚀 Volume Multipliers")
                 st.dataframe(df_m.sort_values(by="Volume Ratio", ascending=False).head(10)[["Stock", "CMP (₹)", "Volume Ratio", "Change %"]].reset_index(drop=True), use_container_width=True)
             with c4:
-                st.markdown("#### 💰 Top 10 High Turnover (₹ Cr)")
+                st.markdown("#### 💰 High Turnover (₹ Cr)")
                 st.dataframe(df_m.sort_values(by="Turnover (₹ Cr)", ascending=False).head(10)[["Stock", "CMP (₹)", "Turnover (₹ Cr)", "Change %"]].reset_index(drop=True), use_container_width=True)
 
-            c5, c6 = st.columns(2)
-            with c5:
-                st.markdown("#### 🔥 Top 10 High RSI")
-                st.dataframe(df_m.sort_values(by="RSI (14)", ascending=False).head(10)[["Stock", "CMP (₹)", "RSI (14)", "Change %"]].reset_index(drop=True), use_container_width=True)
-            with c6:
-                st.markdown("#### ❄️ Top 10 Low RSI")
-                st.dataframe(df_m.sort_values(by="RSI (14)", ascending=True).head(10)[["Stock", "CMP (₹)", "RSI (14)", "Change %"]].reset_index(drop=True), use_container_width=True)
-        
+# TAB 3: LEGAL, POLICIES & TERMS (RAZORPAY & SEBI MANDATORY)
+with main_tab3:
+    st.markdown("### 📑 Policies & Legal Information")
+    policy_choice = st.selectbox("दस्तावेज़ चुनें:", ["Terms & Conditions", "Privacy Policy", "Refund & Cancellation Policy", "About & Contact"])
+    
+    if policy_choice == "Terms & Conditions":
+        st.write("""
+        **1. Acceptance of Terms:** By accessing this platform, you agree that all tools and analytical calculations provided are strictly for personal, educational, and mathematical screening purposes.
+        \n**2. No Investment Advice:** This website does not offer stock tips, advisory services, portfolio management, or guaranteed returns. We are not registered with SEBI as an Investment Adviser (IA) or Research Analyst (RA).
+        \n**3. Limitation of Liability:** Trading in capital markets involves significant financial risk. The platform owners will not be held liable for any trading losses incurred based on the use of these technical screeners.
+        """)
+    elif policy_choice == "Privacy Policy":
+        st.write("""
+        We respect your privacy. User email IDs and authentication credentials are stored securely using encrypted standards and are never sold or shared with third-party advertising networks.
+        """)
+    elif policy_choice == "Refund & Cancellation Policy":
+        st.write("""
+        We offer a 7-day free trial for users to evaluate all platform features. Once a paid subscription is activated, fees are non-refundable. Subscriptions can be canceled at any time to avoid renewal.
+        """)
+    elif policy_choice == "About & Contact":
+        st.write("""
+        **Platform Support & Queries:**  
+        Email: `support@zerotoinvestor.in` / `zerotoinvestorofficial@gmail.com`  
+        Operational Hours: Monday - Friday (9:00 AM - 5:00 PM IST)
+        """)
+
+# Footer Note
+st.markdown("---")
+st.markdown("<div class='footer-text'>Alpha Momentum Analytics © 2026 | Built strictly for Educational & Technical Research | Not a SEBI Registered Advisory Service</div>", unsafe_allow_html=True)
+                    
